@@ -13,19 +13,19 @@
 
 ## ✨ Features
 
-- ⚡ **Fast redirects** with Redis caching
-- 📊 **Click analytics** — referrers, countries, browsers, time-series
-- 🔒 **Rate limiting** per endpoint via Redis Lua scripts
-- ⏰ **URL expiration** with background auto-cleanup scheduler
-- 🛡️ **Admin controls** — delete, restore, bulk cleanup
-- 🔍 **Search** URLs by long URL
-- 📈 **Top URLs leaderboard**
-- 🔑 **Edit tokens** for secure URL updates
-- 🔄 **Distributed locks** for safe concurrent operations
+- Fast redirects with Redis caching
+- Click analytics — referrers, countries, browsers, time-series
+- Rate limiting per endpoint via Redis Lua scripts
+- URL expiration with background auto-cleanup scheduler
+- Admin controls — delete, restore, bulk cleanup
+- Search URLs by long URL
+- Top URLs leaderboard
+- Edit tokens for secure URL updates
+- Distributed locks for safe concurrent operations
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -45,7 +45,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -90,7 +90,7 @@ Visit **http://localhost:8000/scalar** for interactive API documentation.
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### URL Management
 
@@ -122,7 +122,7 @@ Visit **http://localhost:8000/scalar** for interactive API documentation.
 
 ---
 
-## 📖 Request Examples
+## Request Examples
 
 ### Create Short URL
 
@@ -190,7 +190,7 @@ curl -X DELETE http://localhost:8000/admin/urls/mylink \
 
 ---
 
-## ⚙️ Environment Variables
+## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -211,7 +211,7 @@ curl -X DELETE http://localhost:8000/admin/urls/mylink \
 
 ---
 
-## 📅 Period Filters
+## Period Filters
 
 Analytics, history, and top URL endpoints support time filtering via `?period=`:
 
@@ -227,7 +227,7 @@ Example: `GET /urls/abc123/analytics?period=1w`
 
 ---
 
-## 🧱 Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -241,7 +241,7 @@ Example: `GET /urls/abc123/analytics?period=1w`
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 url_shortener/
@@ -265,7 +265,7 @@ url_shortener/
 
 ---
 
-## 👤 Author
+## Author
 
 **Anas Khan**  
 GitHub: [@madriLysh](https://github.com/madriLysh)
