@@ -1,4 +1,4 @@
-# 🔗 URL Shortener API
+# URL Shortener API
 
 > High-performance URL shortener with analytics, rate limiting, and admin controls.  
 > Built by **Anas Khan** ([@madriLysh](https://github.com/madriLysh))
@@ -11,7 +11,7 @@
 
 ---
 
-## ✨ Features
+## Features
 
 - Fast redirects with Redis caching
 - Click analytics — referrers, countries, browsers, time-series
