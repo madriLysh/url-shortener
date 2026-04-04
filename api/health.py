@@ -1,0 +1,29 @@
+from fastapi import APIRouter, Depends
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from api.dependencies import get_redis_client
+from infrastructure import RedisClient, get_db
+
+router = APIRouter(prefix="/health")
+
+@router.get("")
+def health_check(
+    redis: RedisClient = Depends(get_redis_client),
+    db: Session = Depends(get_db)
+):
+    status = {"status": "ok", "redis": "ok", "database": "ok"}
+
+    try:
+        redis.client.ping()
+    except Exception:
+        status["redis"] = "unavailable"
+        status["status"] = "degraded"
+
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        status["database"] = "unavailable"
+        status["status"] = "degraded"
+
+    return status
