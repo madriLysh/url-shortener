@@ -1,0 +1,9 @@
+.git/              # version history — not needed to run, just bloat
+venv/              # your LOCAL virtualenv — see the trap below
+__pycache__/       # compiled bytecode, regenerated automatically
+*.pyc              # same, catches stray files at any level
+.env               # SECRETS — the whole point of this file
+.dockerignore      # itself — meta, but standard
+Dockerfile         # not needed inside the image
+tests/             # optional — decide below
+*.md               # optional — README etc., harmless either way
