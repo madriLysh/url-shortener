@@ -1,4 +1,17 @@
 services:
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      target: test
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - REDIS_HOST=cache
+    depends_on:
+      db:
+        condition: service_healthy
+      cache: 
+        condition: service_started
   db:
     image: postgres:16
     restart: unless-stopped

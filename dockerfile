@@ -9,6 +9,19 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY requirements.txt .
 RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements.txt
 
+####
+FROM builder AS test
+
+COPY requirements.txt requirements-dev.txt ./
+RUN --mount=type=cache,target=/root/.cache/pip pip install -r requirements-dev.txt
+
+WORKDIR /app
+
+COPY . .
+
+CMD ["pytest", "-v"]
+
+####
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
