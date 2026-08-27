@@ -27,4 +27,6 @@ def health_check(
         status["database"] = "unavailable"
         status["status"] = "degraded"
 
+    if status["status"] == "degraded": response.status_code = 503
+
     return status
