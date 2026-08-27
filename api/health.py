@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ router = APIRouter(prefix="/health")
 
 @router.get("")
 def health_check(
+    response: Response,
     redis: RedisClient = Depends(get_redis_client),
     db: Session = Depends(get_db)
 ):
