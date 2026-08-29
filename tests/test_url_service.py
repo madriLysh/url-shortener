@@ -81,9 +81,11 @@ class FakeRedis:
         return True
 
     def zrevrange(self, key, start, end, scores=False):
+        # Sort by score descending, then by member reverse-alphabetically to match
+        # real Redis ZREVRANGE tie-breaking.
         items = sorted(
             self._scores.get(key, {}).items(),
-            key=lambda x: x[1],
+            key=lambda x: (x[1], x[0]),
             reverse=True,
         )
         if end < 0:
@@ -215,3 +217,12 @@ def test_record_click_survives_referrer_failure(service, monkeypatch):
     service.db.rollback()
     clicks = service.db.query(Click).filter(Click.url_id == url.id).all()
     assert len(clicks) == 1
+
+
+def test_fake_redis_zrevrange_tie_breaking():
+    redis = FakeRedis()
+    redis.zincrby("referrers:1", "google.com", 1)
+    redis.zincrby("referrers:1", "twitter.com", 1)
+
+    result = redis.zrevrange("referrers:1", 0, -1)
+    assert result == ["twitter.com", "google.com"]
