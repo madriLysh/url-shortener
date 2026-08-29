@@ -246,11 +246,11 @@ class RedisClient:
 
     def zrevrange(
         self, key: str,
-        offset: int = 0,
-        limit: int = 10,
+        start: int = 0,
+        end: int = 9,
         scores: bool = False
     ) -> Optional[list]:
-        result = self._execute("zrevrange", key, offset, offset + limit - 1, withscores=scores)
+        result = self._execute("zrevrange", key, start, end, withscores=scores)
         return result if result else None
 
     def zincrby(self, key: str, member: str, increment: int = 1) -> bool:

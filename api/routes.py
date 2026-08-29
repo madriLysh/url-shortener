@@ -178,7 +178,7 @@ def get_click_history(
 
     since = since_calculation(period)
 
-    history = service.get_url_history(short_code, since, page_size, offset)
+    history = service.get_url_history(short_code, since, offset, page_size)
     if history is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="URL not found")
     return {

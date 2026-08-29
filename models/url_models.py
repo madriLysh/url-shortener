@@ -2,7 +2,7 @@ import secrets
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import BigInteger, Boolean, ForeignKey, Index, String, Text, func
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infrastructure.database import Base
@@ -12,12 +12,12 @@ class URL(Base):
     __tablename__ = "urls"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
-    short_code: Mapped[str] = mapped_column(String(10), unique=True, nullable=False)
+    short_code: Mapped[str] = mapped_column(String(10), nullable=False)
     long_url: Mapped[str] = mapped_column(Text, nullable=False)
     creator_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(default=func.now())
-    expires_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     click_count: Mapped[int] = mapped_column(default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     edit_token: Mapped[str] = mapped_column(
@@ -35,6 +35,14 @@ class URL(Base):
 
     __table_args__ = (
         Index("ix_urls_short_code_active", "short_code", "is_active"),
+        # Only *active* short codes must be unique; deleted codes may be reused.
+        Index(
+            "ix_urls_short_code_active_unique",
+            "short_code",
+            unique=True,
+            postgresql_where=is_active.is_(True),
+            sqlite_where=is_active.is_(True),
+        ),
     )
 
     def __repr__(self) -> str:
@@ -44,9 +52,13 @@ class URL(Base):
 class Click(Base):
     __tablename__ = "clicks"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(
+        BigInteger().with_variant(Integer, "sqlite"),
+        primary_key=True,
+        autoincrement=True,
+    )
     url_id: Mapped[int] = mapped_column(ForeignKey("urls.id", ondelete="CASCADE"), nullable=False)
-    clicked_at: Mapped[datetime] = mapped_column(default=func.now())
+    clicked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
     ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
     user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     referrer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -69,7 +81,7 @@ class ReferrerState(Base):
     url_id: Mapped[int] = mapped_column(ForeignKey("urls.id", ondelete="CASCADE"), nullable=False)
     referrer_domain: Mapped[str] = mapped_column(String(255), index=True, nullable=False)
     click_count: Mapped[int] = mapped_column(default=1)
-    last_clicked: Mapped[datetime] = mapped_column(default=func.now())
+    last_clicked: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
 
     url: Mapped["URL"] = relationship(back_populates="referrer_stats")
 

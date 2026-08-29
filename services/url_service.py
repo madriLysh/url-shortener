@@ -8,6 +8,7 @@ import tldextract
 from redis import RedisError
 from sqlalchemy import exists as sa_exists
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from user_agents import parse
 
@@ -135,13 +136,12 @@ class URLService:
         cached = self.redis.get_hash(self._key(code))
         if cached:
             cached_is_active = cached.get("is_active", "True") == "True"
-            if cached_is_active == is_active:
+            if is_active is None or cached_is_active == is_active:
                 return True
-        return (
-            self.db.query(URL)
-            .filter(URL.short_code == code, URL.is_active == is_active)
-            .first() is not None
-        )
+        query = self.db.query(URL).filter(URL.short_code == code)
+        if is_active is not None:
+            query = query.filter(URL.is_active == is_active)
+        return query.first() is not None
 
     def create_url(
         self,
@@ -150,6 +150,9 @@ class URLService:
         expires_at: Optional[datetime] = None,
         custom_code: Optional[str] = None,
     ) -> tuple[str, str]:
+        if not self._is_valid_long_url(long_url):
+            raise ValueError(f"URL '{long_url}' is not allowed.")
+
         if custom_code:
             if not self._is_valid_code(custom_code):
                 raise ValueError(
@@ -167,9 +170,11 @@ class URLService:
 
             try:
                 if Config.ALLOW_REUSE_DELETED_CODES:
+                    # Only active codes must not collide; deleted codes can be reused.
                     code_exists = self._code_exist(custom_code, is_active=True)
                 else:
-                    code_exists = self._code_exist(custom_code, is_active=False)
+                    # Any record of the code, active or deleted, blocks reuse.
+                    code_exists = self._code_exist(custom_code, is_active=None)
 
                 if code_exists:
                     raise ValueError(f"Custom code '{custom_code}' already in use.")
@@ -203,7 +208,11 @@ class URLService:
             creator_ip=creator_ip,
         )
         self.db.add(url)
-        self.db.commit()
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            raise ValueError(f"Short code '{short_code}' already exists.")
 
         data = self._build_url_data_dict(
             url,
@@ -386,15 +395,23 @@ class URLService:
         referrer: Optional[str],
     ) -> None:
 
-        clicks = Click(
+        click = Click(
             url_id=int(url_id),
             ip_address=ip_address,
             user_agent=user_agent,
             referrer=referrer
         )
-        self.db.add(clicks)
+        self.db.add(click)
+        try:
+            self.db.commit()
+        except Exception as e:
+            logger.error("Failed to record click in DB: %s", e, exc_info=True)
+            self.db.rollback()
+            return
+
+        # Referrer stats are derived/analytics data; keep them independent of the
+        # core click record so a referrer failure does not lose the click.
         self._upsert_referrer(int(url_id), referrer)
-        self.db.commit()
 
     def _upsert_referrer(
         self,
@@ -411,21 +428,23 @@ class URLService:
 
         try:
             existing = (
-                    self.db.query(ReferrerState)
-                    .filter(
-                        ReferrerState.url_id == url_id,
-                        ReferrerState.referrer_domain == referrer_domain,
-                    )
-                    .first()
+                self.db.query(ReferrerState)
+                .filter(
+                    ReferrerState.url_id == url_id,
+                    ReferrerState.referrer_domain == referrer_domain,
                 )
+                .first()
+            )
             if existing:
                 existing.click_count += 1
                 existing.last_clicked = datetime.now(timezone.utc)
             else:
-                new_referrer = ReferrerState(url_id= url_id, referrer_domain= referrer_domain)
+                new_referrer = ReferrerState(url_id=url_id, referrer_domain=referrer_domain)
                 self.db.add(new_referrer)
+            self.db.commit()
         except Exception as e:
-            logger.error("Failed to update referrer in DB: %s", e)
+            logger.error("Failed to update referrer in DB: %s", e, exc_info=True)
+            self.db.rollback()
 
         try:
             self.redis.zincrby(f"referrers:{url_id}", referrer_domain, 1)
@@ -458,8 +477,8 @@ class URLService:
 
         logger.info("Starting click sync to DB")
 
-        def _sync_batch(keys: list[str]) -> int:
-            """Returns count of updated URLs. Logs errors internally."""
+        def _sync_batch(keys: list[str]) -> Optional[int]:
+            """Returns count of updated URLs, or None if the batch failed."""
             if not keys:
                 return 0
 
@@ -472,7 +491,7 @@ class URLService:
                 results = pipe.execute()
             except Exception as e:
                 logger.error(f"Redis error in batch: {e}")
-                return 0  # Fail batch, don't try fallback
+                return None  # Fail batch, don't try fallback
 
             for data in results:
                 if not data:
@@ -495,7 +514,7 @@ class URLService:
                 except Exception as e:
                     logger.error(f"DB commit failed: {e}")
                     self.db.rollback()
-                    return 0
+                    return None
             else:
                 self.db.rollback()
                 return 0
@@ -505,21 +524,33 @@ class URLService:
             batch.append(key)
             if len(batch) >= Config.BATCH_SIZE:
                 updated = _sync_batch(batch)
-                if updated == 0 and batch:
+                if updated is None:
                     error_batches += 1
-                total_updated += updated
+                else:
+                    total_updated += updated
                 batch.clear()
 
         if batch:
             updated = _sync_batch(batch)
-            total_updated += updated
+            if updated is None:
+                error_batches += 1
+            else:
+                total_updated += updated
 
         duration = time.time() - start_time
 
-        logger.info(f"Sync complete: {total_updated} updated in {duration:.2f}s")
+        logger.info(
+            f"Sync complete: {total_updated} updated, {error_batches} error batches "
+            f"in {duration:.2f}s"
+        )
 
     def _is_valid_long_url(self, url: str) -> bool:
+        """Basic SSRF guard: blocks literal private/loopback/link-local IPs and
+        a small hostname blocklist.
 
+        Note: this only inspects the parsed hostname. It does not resolve domains,
+        so DNS-rebinding domains that point to private IPs are not blocked.
+        """
         parsed = urlparse(url)
         if parsed.scheme not in self.ALLOWED_SCHEMES:
             return False
@@ -611,8 +642,11 @@ class URLService:
         if not url.expires_at:
             raise ValueError("URL has no expiry to extend.")
 
-        current = url.expires_at or datetime.now(timezone.utc)
-        new_expires_at = current + timedelta(seconds=Config.CACHE_TTL)
+        expires_at = url.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+        new_expires_at = expires_at + timedelta(seconds=Config.CACHE_TTL)
         url.expires_at = new_expires_at
         self.db.commit()
 
