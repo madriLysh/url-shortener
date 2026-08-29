@@ -15,6 +15,8 @@ class FakeRedis:
         self._data = {}
         self._counters = {}
         self._locks = {}
+        self._scores = {}
+        self._hyperloglog = {}
         # Some service code accesses redis.client.pipeline()
         self.client = self
 
@@ -30,6 +32,20 @@ class FakeRedis:
             self._data[key] = {}
         self._data[key][field] = value
         return True
+
+    def increment_hash_field(self, key, field, amount=1):
+        if key not in self._data:
+            self._data[key] = {}
+        current = int(self._data[key].get(field, 0))
+        self._data[key][field] = str(current + amount)
+        return True
+
+    def pfadd(self, key, value):
+        self._hyperloglog.setdefault(key, set()).add(value)
+        return True
+
+    def pfcount(self, key):
+        return len(self._hyperloglog.get(key, set()))
 
     def delete(self, key):
         self._data.pop(key, None)
@@ -59,8 +75,28 @@ class FakeRedis:
     def zrem(self, key, member):
         return True
 
-    def zincrby(self, key, increment, member):
+    def zincrby(self, key, member, increment=1):
+        self._scores.setdefault(key, {})
+        self._scores[key][member] = self._scores[key].get(member, 0) + increment
         return True
+
+    def zrevrange(self, key, start, end, scores=False):
+        items = sorted(
+            self._scores.get(key, {}).items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )
+        if end < 0:
+            end = len(items) + end
+        else:
+            end = min(end, len(items) - 1)
+        start = max(start, 0)
+        if start > end:
+            return []
+        sliced = items[start:end + 1]
+        if scores:
+            return [(member, score) for member, score in sliced]
+        return [member for member, _ in sliced]
 
     def expire_nx(self, key, ttl):
         return True

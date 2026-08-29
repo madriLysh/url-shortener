@@ -204,6 +204,7 @@ class URLService:
             short_code=short_code,
             long_url=long_url,
             is_active=True,
+            is_custom=bool(custom_code),
             expires_at=expires_at,
             creator_ip=creator_ip,
         )
