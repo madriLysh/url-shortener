@@ -44,3 +44,4 @@ env/
 .env.local
 
 fix.txt
+PROJECT_NOTES.md

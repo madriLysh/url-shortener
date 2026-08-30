@@ -1,14 +1,19 @@
+from typing import Any, cast
+from datetime import datetime, timezone
+
 import pytest
+from redis import Redis
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from config import Config
 from infrastructure.database import Base
+from infrastructure.redis_client import RedisClient
 from models import Click, URL
 from services import URLService
 
 
-class FakeRedis:
+class FakeRedis(RedisClient):
     """Minimal Redis stand-in for unit tests that never touch the network."""
 
     def __init__(self):
@@ -18,7 +23,7 @@ class FakeRedis:
         self._scores = {}
         self._hyperloglog = {}
         # Some service code accesses redis.client.pipeline()
-        self.client = self
+        super().__init__(cast(Redis, self))
 
     def get_hash(self, key):
         return self._data.get(key)
@@ -58,7 +63,7 @@ class FakeRedis:
             return self._counters[key]
         return None
 
-    def acquire_lock(self, lock_name, acquire_timeout=10):
+    def acquire_lock(self, lock_name, acquire_timeout=10, lock_timeout=10):
         if lock_name in self._locks:
             return None
         token = "token"
@@ -80,7 +85,7 @@ class FakeRedis:
         self._scores[key][member] = self._scores[key].get(member, 0) + increment
         return True
 
-    def zrevrange(self, key, start, end, scores=False):
+    def zrevrange(self, key, start=0, end=9, scores=False):
         # Sort by score descending, then by member reverse-alphabetically to match
         # real Redis ZREVRANGE tie-breaking.
         items = sorted(
@@ -104,7 +109,7 @@ class FakeRedis:
         return True
 
     def pipeline(self):
-        return self
+        return cast(Any, self)
 
     def execute(self):
         return []
@@ -226,3 +231,88 @@ def test_fake_redis_zrevrange_tie_breaking():
 
     result = redis.zrevrange("referrers:1", 0, -1)
     assert result == ["twitter.com", "google.com"]
+
+def test_get_url_cache_hit_fresh(service):
+    service.redis._data["url:fresh1"] = {
+        "id": "1",
+        "short_code": "fresh1",
+        "long_url": "https://example.com",
+        "expires_at": "", 
+        "click_count": "0",
+        "is_active": "True"
+    }
+
+    result = service.get_url("fresh1")
+    assert result is not None
+    assert result["long_url"]== "https://example.com"
+
+def test_get_url_cache_hit_inactive_evicts_entr(service):
+    service.redis._data["url:gone1"] = {
+        "id": "2",
+        "short_code": "gone1",
+        "long_url": "https://example.com",
+        "expires_at": "",
+        "click_count": "0",
+        "is_active": "False"
+    }
+
+    result = service.get_url("gone1")
+    assert result is None
+    assert "url:gone1" not in service.redis._data
+
+def test_get_url_cache_hit_expired_evicts_entry(service):
+    service.redis._data["url:exp1"] = {
+        "id": "3",
+        "short_code": "exp1",
+        "long_url": "https://example.com",
+        "expires_at": "2000-01-01T00:00:00+00:00",
+        "click_count": "0",
+        "is_active": "True",
+    }
+
+    result = service.get_url("exp1")
+
+    assert result is None
+    assert "url:exp1" not in service.redis._data
+
+def test_get_url_cache_miss_db_hit_backfills(service, db_session):
+    db_session.add(URL(
+        short_code="dbok1",
+        long_url="https://example.com/page",
+        is_active=True,
+        expires_at=None,
+        edit_token="tok",
+    ))
+    db_session.commit()
+
+    assert "url:dbok1" not in service.redis._data
+
+    result = service.get_url("dbok1")
+    assert result is not None
+    assert result["long_url"] == "https://example.com/page"
+
+def test_get_url_cache_miss_expired_db_row_deactivates(service, db_session):
+    expires_at = datetime(2000,1,1,tzinfo=timezone.utc)
+    db_session.add(URL(
+        id=1,
+        short_code="dbexp1",
+        long_url="https://example.com/page",
+        is_active=True,
+        expires_at= expires_at,
+        edit_token="Tok",
+    ))
+    db_session.commit()
+
+    assert "url:dbexp1" not in service.redis._data 
+
+    result = service.get_url("dbexp1")
+
+    assert result is None
+
+    row = db_session.query(URL).filter(URL.short_code == "dbexp1").first()
+    assert row is not None
+    assert row.is_active is False
+
+def test_get_url_total_miss_returns_none(service):
+    result = service.get_url("none1")
+    assert result is None
