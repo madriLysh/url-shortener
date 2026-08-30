@@ -114,7 +114,6 @@ class FakeRedis(RedisClient):
     def execute(self):
         return []
 
-
 @pytest.fixture
 def db_session():
     engine = create_engine("sqlite:///:memory:")
@@ -126,11 +125,9 @@ def db_session():
     finally:
         session.close()
 
-
 @pytest.fixture
 def service(db_session):
     return URLService(redis_client=FakeRedis(), db_session=db_session)
-
 
 @pytest.mark.parametrize("url, allowed", [
     ("https://example.com/path", True),
@@ -149,11 +146,9 @@ def service(db_session):
 def test_is_valid_long_url(service, url, allowed):
     assert service._is_valid_long_url(url) is allowed
 
-
 def test_create_url_rejects_private_url(service):
     with pytest.raises(ValueError, match="is not allowed"):
         service.create_url("http://127.0.0.1/admin", creator_ip="127.0.0.1")
-
 
 def test_create_url_with_reused_deleted_code_when_allowed(service, monkeypatch):
     monkeypatch.setattr(Config, "ALLOW_REUSE_DELETED_CODES", True)
@@ -166,7 +161,6 @@ def test_create_url_with_reused_deleted_code_when_allowed(service, monkeypatch):
     )
     assert short_code == "reuse"
 
-
 def test_create_url_rejects_active_custom_code(service):
     service.create_url("https://example.com", creator_ip="1.2.3.4", custom_code="taken")
 
@@ -174,7 +168,6 @@ def test_create_url_rejects_active_custom_code(service):
         service.create_url(
             "https://example.org", creator_ip="1.2.3.4", custom_code="taken"
         )
-
 
 def test_create_url_rejects_deleted_code_when_reuse_disabled(service, monkeypatch):
     monkeypatch.setattr(Config, "ALLOW_REUSE_DELETED_CODES", False)
@@ -187,7 +180,6 @@ def test_create_url_rejects_deleted_code_when_reuse_disabled(service, monkeypatc
             "https://example.org", creator_ip="1.2.3.4", custom_code="noreuse"
         )
 
-
 def test_extend_url_expiry(service):
     from datetime import datetime, timedelta, timezone
 
@@ -199,7 +191,6 @@ def test_extend_url_expiry(service):
 
     remaining = service.extend_url_expiry(short_code, edit_token)
     assert remaining > 60
-
 
 def test_record_click_survives_referrer_failure(service, monkeypatch):
     short_code, _ = service.create_url("https://example.com", creator_ip="1.2.3.1")
@@ -222,7 +213,6 @@ def test_record_click_survives_referrer_failure(service, monkeypatch):
     service.db.rollback()
     clicks = service.db.query(Click).filter(Click.url_id == url.id).all()
     assert len(clicks) == 1
-
 
 def test_fake_redis_zrevrange_tie_breaking():
     redis = FakeRedis()
@@ -352,3 +342,101 @@ def test_increment_clicks_unknown_code_returns_false(service):
     assert result is False
     assert "url:ghost1" not in service.redis._data 
     assert "unique_visitors:ghost1" not in service.redis._hyperloglog
+
+def test_update_url_valid_token_updates_db_and_cache(service, db_session):
+    db_session.add(URL(
+        short_code="up1",
+        long_url="https://old.com",
+        is_active=True,
+        expires_at=None,
+        edit_token="secret-tok"
+    ))
+    db_session.commit()
+
+    result = service.update_url("up1", "https://new.com", "secret-tok")
+    assert result is True
+
+    row = db_session.query(URL).filter(URL.short_code == "up1").first()
+    assert row.long_url == "https://new.com"
+    assert "https://new.com" == service.redis._data["url:up1"]["long_url"]
+
+def test_update_url_invalid_token_raises_and_leaves_url_unchanged(service, db_session):
+    db_session.add(URL(
+        short_code="up2",
+        long_url="https://old.com",
+        is_active=True,
+        expires_at=None,
+        edit_token="secret-tok"
+    ))
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="Invalid edit token"):
+        service.update_url("up2", "https://new.com", "wrong-tok")
+    assert "url:up2" not in service.redis._data
+
+    row = db_session.query(URL).filter(URL.short_code == "up2").first()
+    assert row.long_url == "https://old.com"
+    
+def test_update_url_unknown_code_raises_not_found(service):
+    with pytest.raises(ValueError, match="not found"):
+        service.update_url("ghost", "https://new.com", "tok")
+
+def test_restore_url_deleted_row_restores_and_backfills_cache(service, db_session):
+    db_session.add(URL(
+        short_code="rs1",
+        long_url="https://example.com",
+        is_active=False,
+        expires_at=None,
+        edit_token="tok"
+    ))
+    db_session.commit()
+
+    assert "url:rs1" not in service.redis._data 
+
+    result = service.restore_url("rs1")
+    assert result is True
+    assert service.redis._data["url:rs1"]["is_active"] == "True"
+    assert service.redis._data["url:rs1"]["long_url"] == "https://example.com"
+
+def test_restore_url_active_row_raises(service, db_session):
+    db_session.add(URL(
+        short_code="rs2",
+        long_url="https://example.com",
+        is_active=True,
+        expires_at=None,
+        edit_token="tok"
+    ))
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="not found or not deleted"):
+        service.restore_url("rs2")
+
+    row = db_session.query(URL).filter(URL.short_code == "rs2").first()
+    assert row.is_active == True
+
+def test_restore_url_unknown_code_raises(service):
+    with pytest.raises(ValueError, match="not found"):
+        service.restore_url("rs3")
+
+def test_restore_url_reclaimed_code_raises(service, db_session):
+    db_session.add(URL(
+        short_code= "rs4",
+        long_url="https://example.com",
+        is_active=True,
+        expires_at=None,
+        edit_token="t1"
+    ))
+    db_session.add(URL(
+        short_code= "rs4",
+        long_url="https://example.com",
+        is_active=False,
+        expires_at=None,
+        edit_token="t2"
+    ))
+    db_session.commit()
+
+    with pytest.raises(ValueError, match="now used by another URL"):
+        service.restore_url("rs4")
+
+    row = db_session.query(URL).filter(URL.edit_token == "t2").first()
+    assert row.is_active == False
