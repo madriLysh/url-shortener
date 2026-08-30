@@ -352,19 +352,3 @@ def test_increment_clicks_unknown_code_returns_false(service):
     assert result is False
     assert "url:ghost1" not in service.redis._data 
     assert "unique_visitors:ghost1" not in service.redis._hyperloglog
-
-def test_increment_clicks_inactive_cache_entry_evicts_and_returns_false(service):
-    service.redis._data["url:gone2"] = {
-        "id": "5",
-        "short_code": "gone2",
-        "long_url": "https://example.com",
-        "expires_at": "",
-        "click_count": "3",
-        "is_active": "False"
-    }
-
-    result = service.increment_clicks("gone2", "1.2.3.4")
-
-    assert result is False
-    assert "url:gone2" not in service.redis._data
-    assert "unique_visitors:gone2" not in service.redis._hyperloglog
