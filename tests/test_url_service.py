@@ -316,3 +316,43 @@ def test_get_url_cache_miss_expired_db_row_deactivates(service, db_session):
 def test_get_url_total_miss_returns_none(service):
     result = service.get_url("none1")
     assert result is None
+
+def test_increment_clicks_cache_hit_increments_and_tracks_visitor(service):
+    service.redis._data["url:clk1"] = {
+        "id": "4",
+        "short_code": "clk1",
+        "long_url": "https://example.com",
+        "expires_at": "",
+        "click_count": "5",
+        "is_active": "True"
+    }
+    result = service.increment_clicks("clk1", "1.2.3.4")
+    assert result is True
+    assert service.redis._data["url:clk1"]["click_count"] == "6"
+    assert "1.2.3.4" in service.redis._hyperloglog["unique_visitors:clk1"]
+
+def test_increment_clicks_cache_miss_backfills_then_increments(service, db_session):
+    db_session.add(URL(
+        short_code="clk2",
+        long_url="https://example.com",
+        is_active=True,
+        expires_at=None,
+        edit_token="tok"
+    ))
+    db_session.commit()
+
+    assert "url:clk2" not in service.redis._data 
+    result = service.increment_clicks("clk2", "1.2.3.4")
+    assert result is True
+    assert service.redis._data["url:clk2"]["click_count"] == "1"
+    assert "1.2.3.4" in service.redis._hyperloglog["unique_visitors:clk2"]
+
+def test_increment_clicks_unknown_code_returns_false(service):
+    result = service.increment_clicks("ghost1", "9.9.9.9")
+    assert result is False
+    assert "url:ghost1" not in service.redis._data 
+    assert "9.9.9.9" not in service.redis._hyperloglog["unique_visitors:ghost1"]
+
+@pytest.mark.skip("will be completed later")
+def test_increment_clicks_inactive_cache_entry_evicts_and_returns_false(service):
+    pass
