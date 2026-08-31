@@ -1,5 +1,5 @@
 from typing import Any, cast
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import pytest
 from redis import Redis
@@ -440,3 +440,86 @@ def test_restore_url_reclaimed_code_raises(service, db_session):
 
     row = db_session.query(URL).filter(URL.edit_token == "t2").first()
     assert row.is_active == False
+
+def test_extend_url_expiry_unknown_code_raises(service):
+    with pytest.raises(ValueError, match="not found"):
+        service.extend_url_expiry("ghost", "tok")
+
+def test_extend_url_expiry_invalid_token_raises(service):
+    short_code, _ = service.create_url(
+        "https://example.com",
+        creator_ip="1.2.3.4",
+        expires_at=datetime.now(timezone.utc) + timedelta(seconds=60),
+    )
+    with pytest.raises(ValueError, match="Invalid edit token"):
+        service.extend_url_expiry(short_code, "wrong-token")
+
+def test_extend_url_expiry_no_expiry_raises(service):
+    short_code, edit_token = service.create_url(
+        "https://example.com",
+        creator_ip="1.2.3.4"
+    )
+
+    with pytest.raises(ValueError, match="no expiry to extend"):
+        service.extend_url_expiry(short_code, edit_token)
+
+def test_create_url_lock_unavailable_raises(service):
+    service.redis._locks["code:token1"] = "someone-elses-token" 
+
+    with pytest.raises(ValueError, match="Could not acquire lock"):
+        service.create_url("https://example.com", creator_ip="1.2.3.4", custom_code="token1")
+
+def test_create_url_counter_unavailable_raises_runtime_error(service, monkeypatch):
+    monkeypatch.setattr(service.redis, "_execute", lambda *a, **k: None)
+
+    with pytest.raises(RuntimeError, match="Could not generate short code"):
+        service.create_url("https://example.com", creator_ip="1.2.3.4")
+
+def test_create_url_collision_exhaustion_raises_runtime_error(service, monkeypatch):
+    monkeypatch.setattr(service, "_code_exist", lambda code, is_active=True: True)
+
+    with pytest.raises(RuntimeError, match="Could not generate unique code"):
+        service.create_url("https://example.com", creator_ip="1.2.3.4")
+
+@pytest.mark.parametrize("exp_date, expected", (
+    (None, False),
+    (datetime(2000, 1, 1, tzinfo=timezone.utc), True),
+    (datetime(2099, 1, 1, tzinfo=timezone.utc), False),
+    (datetime(2000, 1, 1), True),
+    (datetime(2099, 1, 1), False)
+))
+def test_is_url_expired(service, exp_date, expected):
+    assert expected is service._is_url_expired(exp_date)
+
+@pytest.mark.parametrize("code, expected", (
+    ("ab", False),
+    ("abc", True),
+    ("a" * 20, True),
+    ("a" * 21, False), 
+    ("ab!", False),
+    ("", False)
+))
+def test_is_valid_code(service, code, expected):
+    assert expected is service._is_valid_code(code)
+
+@pytest.mark.parametrize("input, url", (
+    ("https://www.twitter.com/user/1", "twitter.com"),
+    ("https://blog.example.co.uk/page", "example.co.uk"),
+    ("twitter.com", "twitter.com"),
+    ("localhost", None),
+    ("", None),
+    ("https://192.168.1.1/admin", None)
+))
+def test_normalize_referrer(service, url, expected):
+    assert expected == service._normalize_referrer(url)
+
+@pytest.mark.parametrize("url, expected",(
+    ("HTTP://EXAMPLE.COM", "http://example.com/"),
+    ("http://example.com:80/path", "http://example.com/path"),
+    ("https://example.com:443/", "https://example.com/"),
+    ("https://example.com/path/", "https://example.com/path"),
+    ("https://example.com?a=1&b=2", "https://example.com/?a=1&b=2"),
+    ("  https://example.com/x  ", "https://example.com/x")
+))
+def test_normalize_long_url(service, url, expected):
+    assert expected == service. _normalize_long_url(url)
