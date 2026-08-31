@@ -502,7 +502,7 @@ def test_is_url_expired(service, exp_date, expected):
 def test_is_valid_code(service, code, expected):
     assert expected is service._is_valid_code(code)
 
-@pytest.mark.parametrize("input, url", (
+@pytest.mark.parametrize("url, expected", (
     ("https://www.twitter.com/user/1", "twitter.com"),
     ("https://blog.example.co.uk/page", "example.co.uk"),
     ("twitter.com", "twitter.com"),
@@ -523,3 +523,53 @@ def test_normalize_referrer(service, url, expected):
 ))
 def test_normalize_long_url(service, url, expected):
     assert expected == service. _normalize_long_url(url)
+
+@pytest.mark.parametrize("seed, expected",(
+        (None, False),
+        (True, True),
+        (False, True)
+))
+def test_url_ever_existed(service, db_session, seed, expected):
+    if seed is None:
+        assert expected is service.url_ever_existed("ghost")
+        return
+    db_session.add(URL(
+        short_code="url",
+        long_url="https://example.com",
+        is_active=seed,
+        expires_at=None,
+        edit_token="tok"
+    ))
+    db_session.commit()
+    assert expected is service.url_ever_existed("url")
+
+def test_get_recent_urls_returns_ordered_window(service):
+    service.redis._scores["recent_urls"] = {"aaa": 100.0, "bbb": 200.0, "ccc": 300.0}
+    assert service.get_recent_urls(0, 2) == ["ccc", "bbb"]
+    assert service.get_recent_urls(1, 2) == ["bbb", "aaa"]
+
+def test_delete_url_unknown_code_raises(service):
+    with pytest.raises(ValueError, match="not found"):
+        service.delete_url("unknown")
+
+def test_delete_url_active_row_deactivates_and_evicts(service, db_session):
+    db_session.add(URL(
+        short_code="dl1",
+        long_url="https://example.com",
+        is_active=True,
+        expires_at=None,
+        edit_token="tok"
+    ))
+    db_session.commit()
+
+    service.redis._data["url:dl1"] = {
+    "id": "1", "short_code": "dl1", "long_url": "https://example.com",
+    "expires_at": "", "click_count": "0", "is_active": "True",
+    }
+
+    result = service.delete_url("dl1")
+    assert result is True
+
+    row = db_session.query(URL).filter(URL.short_code == "dl1").first()
+    assert row.is_active is False
+    assert "url:dl1" not in service.redis._data 
