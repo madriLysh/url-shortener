@@ -70,4 +70,28 @@ def test_redirect_expired_url_returns_410(client: TestClient, service: URLServic
 
     response = client.get(f"/url1", follow_redirects=False)
     assert response.status_code == status.HTTP_410_GONE
- 
+
+def test_update_url_valid_token_returns_200_and_updates(client: TestClient, service: URLService, db_session):
+    code, token = service.create_url("https://old.com", creator_ip="1.2.3.4")
+
+    response = client.patch(f"/urls/{code}", json={"new_url": "https://new.com", "edit_token": token})
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json()["detail"] == "URL updated"
+
+    row = db_session.query(URL).filter(URL.edit_token == token).first()
+    assert row.long_url == "https://new.com/"
+
+def test_update_url_invalid_token_returns_404(client: TestClient, service: URLService, db_session):
+    code, token = service.create_url("https://old.com", creator_ip="1.2.3.4")
+
+    response = client.patch(f"/urls/{code}", json={"new_url": "https://new.com", "edit_token": "wrong_token"})
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+def test_update_url_malformed_url_returns_422(client: TestClient):
+    response = client.patch("/urls/anything", json={"new_url": "not-a-url", "edit_token": "x"})
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_CONTENT
+
+def test_update_url_unknown_code_returns_404(client: TestClient):
+    response = client.patch("/urls/ghost1", json={"new_url": "https://example.com", "edit_token": "tok"},)
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    assert "not found" in response.json()["detail"]
