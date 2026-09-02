@@ -17,6 +17,7 @@ class URLResponse(BaseModel):
     short_code: str
     short_url: str
     long_url: str
+    edit_token: str
 
 class ReferrerStat(BaseModel):
     domain: str
@@ -49,6 +50,7 @@ class URLClickHistoryResponse(BaseModel):
     count: int
 
 class URLDeleteResponse(BaseModel):
+    detail: str
     deleted_count: int
 
 
