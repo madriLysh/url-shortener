@@ -1,4 +1,5 @@
 from typing import Any, cast
+from os import environ
 
 from redis import Redis
 from sqlalchemy import create_engine
@@ -132,3 +133,17 @@ def db_session():
 @pytest.fixture
 def service(db_session):
     return URLService(redis_client=FakeRedis(), db_session=db_session)
+
+@pytest.fixture
+def real_redis():
+    if not (url := environ.get("REDIS_TEST_URL")):
+        pytest.skip("set REDIS_TEST_URL to run real-Redis tests")
+    raw = Redis.from_url(url, decode_responses=True)
+    raw.ping()
+    raw.flushdb()
+
+    try:
+        yield RedisClient(raw)
+    finally:
+        raw.flushdb()
+        raw.close()
