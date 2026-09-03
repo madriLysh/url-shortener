@@ -11,6 +11,9 @@ from infrastructure.database import Base
 from infrastructure.redis_client import RedisClient
 from services import URLService
 
+from main import build_application
+from fastapi.testclient import TestClient
+from api.dependencies import get_url_service
 class FakeRedis(RedisClient):
     """Minimal Redis stand-in for unit tests that never touch the network."""
 
@@ -133,6 +136,16 @@ def db_session():
 @pytest.fixture
 def service(db_session):
     return URLService(redis_client=FakeRedis(), db_session=db_session)
+
+@pytest.fixture
+def client(service):
+    app = build_application()
+    app.dependency_overrides[get_url_service] = lambda : service
+
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
 
 @pytest.fixture
 def real_redis():
