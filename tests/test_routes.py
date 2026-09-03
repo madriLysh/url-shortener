@@ -21,6 +21,7 @@ def client(service):
 
 def test_create_short_url_returns_201_and_stores_url(client: TestClient, db_session):
     response = client.post("/shorten", json={"long_url": "https://example.com"})
+    assert "edit_token" in response.json()
     assert response.status_code == status.HTTP_201_CREATED
 
     data = response.json()
@@ -175,6 +176,7 @@ def test_admin_cleanup_returns_deleted_count(client: TestClient, db_session, mon
     response = client.post("/admin/urls/cleanup", headers={"X-API-Key": "test_key"})
     assert response.status_code == status.HTTP_200_OK
     assert response.json()["deleted_count"] == 1
+    assert response.json()["detail"] == "Cleaned up 1 expired URLs"
 
     row = db_session.query(URL).filter(URL.short_code == "old123").first()
     assert row.is_active is False
