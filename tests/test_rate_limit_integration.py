@@ -9,7 +9,7 @@ from fastapi import status
 from main import build_application
 from config import Config
 from services import URLService
-from api.dependencies import get_url_service, get_redis_client
+from api.dependencies import get_url_service
 
 pytestmark = [pytest.mark.redis]
 
@@ -89,10 +89,11 @@ def test_rate_limit_fail_open_on_redis_error():
 def integration_client(service: URLService, real_redis: RedisClient):
     # The /shorten rate-limit path reads service.redis (api/routes.py:35-38),
     # so point the service fixture's redis at the real Redis. SQLite stays.
+    # Safe only because `service` is function-scoped — a wider scope would leak this
+    # mutation into other tests.
     service.redis = real_redis
     app = build_application()
     app.dependency_overrides[get_url_service] = lambda: service
-    app.dependency_overrides[get_redis_client] = lambda: real_redis
     try:
         yield TestClient(app)
     finally:

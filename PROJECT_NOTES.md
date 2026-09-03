@@ -134,6 +134,7 @@ Current result: **82 passed**.
 ## Gaps / future work
 
 - No Alembic migrations yet. Schema changes require `drop/recreate` via `init_db.py` for existing databases.
+- Rate limiting reads `service.redis` (mutable attribute reach-through) instead of declaring its own `Depends(get_redis_client)`. All routes call `check_rate_limit_*(service.redis, ...)`. Refactor candidate: make `check_rate_limit_create/read/write/redirect` take redis via `Depends` directly. Related: `get_redis_client` 500-vs-degraded issue.
 - Remaining unit-test coverage gaps (noted in `fix.txt`):
   - `get_url` scenarios (cache hit, deleted invalidation, expired-in-cache, cache miss + DB backfill, expired-in-DB deactivation, total miss)
   - `increment_clicks`
