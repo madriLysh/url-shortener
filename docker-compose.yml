@@ -7,6 +7,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - REDIS_HOST=cache
+      - REDIS_TEST_URL=redis://cache:6379/1
     depends_on:
       db:
         condition: service_healthy
@@ -45,6 +46,8 @@ services:
         condition: service_healthy
       cache:
         condition: service_started
+      test:
+        service_completed_successfully
 
 volumes:
   pgdata:
