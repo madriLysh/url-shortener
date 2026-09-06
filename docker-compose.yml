@@ -50,7 +50,7 @@ services:
       cache:
         condition: service_started
       test:
-        service_completed_successfully
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

@@ -36,6 +36,14 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("Cannot start without database") from e
 
     try:
+        from infrastructure import Base
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize database tables: {e}")
+        raise RuntimeError("Cannot initialize database tables") from e
+
+    try:
         redis = RedisClient.from_pool()
         redis.client.ping()
         logger.info("Redis connection verified")

@@ -60,7 +60,7 @@ def test_extend_lock_with_correct_token(real_redis: RedisClient):
 
     ttl_before = real_redis.client.ttl("lock:test:extend_ok")
 
-    extended = real_redis.extend_lock("lock:test:extend_ok", token, 10)
+    extended = real_redis.extend_lock("test:extend_ok", token, 10)
     assert extended is True
 
     ttl_after = real_redis.client.ttl("lock:test:extend_ok")

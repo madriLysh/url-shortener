@@ -19,7 +19,7 @@ WORKDIR /app
 
 COPY . .
 
-CMD ["pytest", "-v"]
+CMD ["python", "-m", "pytest", "-v"]
 
 ####
 FROM python:3.11-slim
