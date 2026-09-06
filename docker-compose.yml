@@ -4,6 +4,9 @@ services:
     build:
       context: .
       target: test
+    volumes:
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
     environment:
       - DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
       - REDIS_HOST=cache
