@@ -2,18 +2,23 @@ from typing import Any, cast
 from os import environ
 
 from redis import Redis
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.exc import SQLAlchemyError
+
+from sqlalchemy import create_engine
 import pytest
 
-from infrastructure.database import Base
+from infrastructure.database import Base, get_db
 from infrastructure.redis_client import RedisClient
 from services import URLService
 
+from config import Config
 from main import build_application
+from fastapi import Depends
 from fastapi.testclient import TestClient
-from api.dependencies import get_url_service
+from api.dependencies import get_url_service, get_redis_client
 class FakeRedis(RedisClient):
     """Minimal Redis stand-in for unit tests that never touch the network."""
 
@@ -160,3 +165,40 @@ def real_redis():
     finally:
         raw.flushdb()
         raw.close()
+
+@pytest.fixture(scope= "session")
+def pg_engine():
+    url = environ.get("TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("set TEST_DATABASE_URL to run Postgres integration tests")
+        engine = create_engine(url, pool_pre_ping=True)
+        Base.metadata.create_all(engine)
+        try:
+            yield engine
+        finally:
+            engine.dispose()
+
+@pytest.fixture
+def integration_db(pg_engine):
+    Session = sessionmaker(bind=pg_engine)
+    db = Session()
+    try: 
+        yield db
+    except SQLAlchemyError:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+        with pg_engine.begin() as conn:
+            tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
+            conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
+
+@pytest.fixture
+def integration_client(integration_db, real_redis):
+    app = build_application()
+    app.dependency_overrides[get_db] = lambda: integration_db
+    app.dependency_overrides[get_redis_client] = lambda: real_redis
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
