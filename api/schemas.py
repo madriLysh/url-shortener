@@ -27,6 +27,7 @@ class URLStats(BaseModel):
     click_count: int
     created_at: Optional[datetime] = None
     expires_at: Optional[datetime] = None
+    source: str
     top_referrers: Optional[list[ReferrerStat]] = None
     unique_visitors: int = 0
 

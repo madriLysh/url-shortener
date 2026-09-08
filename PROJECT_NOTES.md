@@ -113,10 +113,16 @@ It does **not** resolve domains, so DNS-rebinding domains that point to private 
 7. **`is_custom` flag** — `create_url` now sets `is_custom=bool(custom_code)`.
 8. **Missing FakeRedis methods** — added `increment_hash_field`, `pfadd`, `pfcount`, and `zrevrange` so `increment_clicks` and `get_recent_urls` are testable.
 
-### Additional bugs found during review
+### Batch 3 — from `fix.txt` (test fixes & dead-code review)
 
-9. **`get_click_history` parameter order** — fixed swapped `offset`/`limit` arguments.
-10. **Recent-URLs pagination** — fixed double `offset + limit - 1` computation in `RedisClient.zrevrange`.
+11. **`source` field added to `URLStats`** — `get_url_stats()` returns `source: "hybrid" | "database"` but the `response_model` silently stripped it, breaking `GET /urls/{code}/stats` consumers. Third occurrence of response_model stripping (after `edit_token`, `detail`). `URLStats` still strips `short_code` and `long_url` from the service's return dict — reported, not changed.
+12. **FakeRedis `release_lock` honors the token** — now checks `self._locks.get(lock_name) == token` before popping and returns `False` otherwise, matching real Redis (previously popped unconditionally).
+13. **`test_admin_route_without_configured_key_returns_403` de-env-ified** — now sets `Config.ADMIN_API_KEY = None` via monkeypatch. Pinning the precondition exposed a second bug: the test asserted `"Invalid API key."` but the real response when no key is configured is 403 `"Admin API key not configured."` — assertion corrected against `api/dependencies.py:verify_api_key`.
+
+### Dead-code findings (investigate-only items from `fix.txt`)
+
+- **`extend_url_expiry` (services/url_service.py:636)** — no route in `api/routes.py` or `api/admin.py` calls it. Only reachable from tests. Dead code or a missing endpoint.
+- **`extend_lock` (infrastructure/redis_client.py:180)** — no production caller; only `tests/test_locks_integration.py` uses it. Dead code.
 
 ---
 

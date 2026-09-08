@@ -77,8 +77,10 @@ class FakeRedis(RedisClient):
         return token
 
     def release_lock(self, lock_name, token):
-        self._locks.pop(lock_name, None)
-        return True
+        if self._locks.get(lock_name) == token:
+            self._locks.pop(lock_name, None)
+            return True
+        return False
 
     def zadd_and_trim(self, key, member, score, limit):
         return True
