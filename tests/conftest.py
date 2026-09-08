@@ -77,6 +77,8 @@ class FakeRedis(RedisClient):
         return token
 
     def release_lock(self, lock_name, token):
+        if self._locks.get(lock_name) != token:
+            return False
         self._locks.pop(lock_name, None)
         return True
 

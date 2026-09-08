@@ -88,10 +88,12 @@ def test_update_url_unknown_code_returns_404(client: TestClient):
     assert response.status_code == status.HTTP_404_NOT_FOUND
     assert "not found" in response.json()["detail"]
 
-def test_admin_route_without_configured_key_returns_403(client: TestClient):
+def test_admin_route_without_configured_key_returns_403(client: TestClient, monkeypatch):
+    monkeypatch.setattr(Config, "ADMIN_API_KEY", None)
+
     response = client.delete("/admin/urls/anycode", headers={"X-API-KEY": "test_key"})
     assert response.status_code == status.HTTP_403_FORBIDDEN
-    assert "Invalid API key." == response.json()["detail"]
+    assert "Admin API key not configured." == response.json()["detail"]
 
 def test_admin_route_missing_header_returns_401(client: TestClient, monkeypatch):
     monkeypatch.setattr(Config, "ADMIN_API_KEY", "test_key")

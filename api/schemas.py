@@ -29,6 +29,7 @@ class URLStats(BaseModel):
     expires_at: Optional[datetime] = None
     top_referrers: Optional[list[ReferrerStat]] = None
     unique_visitors: int = 0
+    source: str
 
 class ErrorResponse(BaseModel):
     detail: str
