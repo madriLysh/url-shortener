@@ -171,12 +171,12 @@ def pg_engine():
     url = environ.get("TEST_DATABASE_URL")
     if not url:
         pytest.skip("set TEST_DATABASE_URL to run Postgres integration tests")
-        engine = create_engine(url, pool_pre_ping=True)
-        Base.metadata.create_all(engine)
-        try:
-            yield engine
-        finally:
-            engine.dispose()
+    engine = create_engine(url, pool_pre_ping=True)
+    Base.metadata.create_all(engine)
+    try:
+        yield engine
+    finally:
+        engine.dispose()
 
 @pytest.fixture
 def integration_db(pg_engine):
