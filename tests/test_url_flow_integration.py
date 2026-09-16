@@ -1,10 +1,10 @@
 import pytest
 from fastapi import status
-
+from os import environ
 from datetime import datetime, timezone, timedelta
 
 pytestmark = [pytest.mark.integration, pytest.mark.redis]
-ADMIN_HEADERS = {"X-API-Key": "gmWek25IZIZ6fhNf9vXrmLu04amYxZzy"}
+ADMIN_HEADERS = {"X-API-Key": environ["ADMIN_API_KEY"]}
 
 def create_short_url(integration_client) -> dict:
     response = integration_client.post("/shorten", json={"long_url": "https://example.com/some-page"})
