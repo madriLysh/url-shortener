@@ -22,7 +22,6 @@ def test_cleanup_deactivates_only_expired_urls(integration_client):
     active = create_short_url(integration_client, "https://example.com/active-page")
 
     response = integration_client.post("/admin/urls/cleanup", headers=ADMIN_HEADERS)
-    print(response.json())
     assert response.status_code == status.HTTP_200_OK
 
     body = response.json()
