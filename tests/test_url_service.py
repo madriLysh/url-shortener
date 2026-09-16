@@ -80,13 +80,13 @@ def test_record_click_survives_referrer_failure(service, monkeypatch):
 
     def flaky_commit(*args, **kwargs):
         commit_calls.append(1)
-        if len(commit_calls) > 1:  # second commit is the referrer upsert
+        if len(commit_calls) > 1: 
             raise RuntimeError("referrer db boom")
         return original_commit(*args, **kwargs)
 
     monkeypatch.setattr(service.db, "commit", flaky_commit)
 
-    # Should not raise; the core click must still be recorded
+
     service.record_click(str(url.id), "1.2.3.1", "agent", "https://referrer.com")
 
     service.db.rollback()
