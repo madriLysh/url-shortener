@@ -4,7 +4,7 @@ from fastapi import status
 from datetime import datetime, timezone, timedelta
 
 pytestmark = [pytest.mark.integration, pytest.mark.redis]
-ADMIN_HEADERS = {"X-API-Key": "test-key"}
+ADMIN_HEADERS = {"X-API-Key": "gmWek25IZIZ6fhNf9vXrmLu04amYxZzy"}
 
 
 def create_short_url(integration_client, long_url: str, expires_at: str | None = None) -> dict:
