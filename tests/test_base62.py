@@ -1,6 +1,8 @@
-import pytest
-from utils.base62 import Base62
 from string import punctuation
+
+import pytest
+
+from utils.base62 import Base62
 
 CASES = [
     ("0", 0),

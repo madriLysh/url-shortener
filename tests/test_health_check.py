@@ -1,9 +1,11 @@
-from fastapi.testclient import TestClient
+import pytest
 from fastapi import status
-from main import build_application
+from fastapi.testclient import TestClient
+
 from api.dependencies import get_redis_client
 from infrastructure import get_db
-import pytest
+from main import build_application
+
 
 class FakeWorkingDB:
     def execute(self, query): return None

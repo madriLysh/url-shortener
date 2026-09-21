@@ -1,12 +1,11 @@
-import pytest
-from fastapi.testclient import TestClient
-from services import URLService
+from datetime import datetime, timedelta, timezone
+
 from fastapi import status
+from fastapi.testclient import TestClient
+
 from config import Config
 from models import URL
-from datetime import datetime, timezone, timedelta
-
-
+from services import URLService
 
 
 def test_create_short_url_returns_201_and_stores_url(client: TestClient, db_session):
@@ -60,7 +59,7 @@ def test_redirect_expired_url_returns_410(client: TestClient, service: URLServic
     ))
     db_session.commit()
 
-    response = client.get(f"/url1", follow_redirects=False)
+    response = client.get("/url1", follow_redirects=False)
     assert response.status_code == status.HTTP_410_GONE
 
 def test_update_url_valid_token_returns_200_and_updates(client: TestClient, service: URLService, db_session):

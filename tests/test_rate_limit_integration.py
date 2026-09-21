@@ -1,15 +1,15 @@
-import pytest
 from time import sleep
 
-from redis import Redis
-from infrastructure.redis_client import RedisClient
-from fastapi.testclient import TestClient
+import pytest
 from fastapi import status
+from fastapi.testclient import TestClient
+from redis import Redis
 
-from main import build_application
-from config import Config
-from services import URLService
 from api.dependencies import get_url_service
+from config import Config
+from infrastructure.redis_client import RedisClient
+from main import build_application
+from services import URLService
 
 pytestmark = [pytest.mark.redis]
 

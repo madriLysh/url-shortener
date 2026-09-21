@@ -1,5 +1,6 @@
-from infrastructure import engine, Base
-from models import URL, Click, ReferrerState  
+from infrastructure import Base, engine
+from models import URL, Click, ReferrerState
+
 
 def init_db():
     print("Creating tables...")

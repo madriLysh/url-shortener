@@ -1,24 +1,21 @@
-from typing import Any, cast
 from os import environ
+from typing import Any, cast
 
+import pytest
+from fastapi.testclient import TestClient
 from redis import Redis
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-from sqlalchemy import create_engine
-import pytest
-
+from api.dependencies import get_redis_client, get_url_service
 from infrastructure.database import Base, get_db
 from infrastructure.redis_client import RedisClient
+from main import build_application
 from services import URLService
 
-from config import Config
-from main import build_application
-from fastapi import Depends
-from fastapi.testclient import TestClient
-from api.dependencies import get_url_service, get_redis_client
+
 class FakeRedis(RedisClient):
     """Minimal Redis stand-in for unit tests that never touch the network."""
 

@@ -1,6 +1,7 @@
+from datetime import date
+
 import pytest
 from fastapi import status
-from datetime import date
 
 pytestmark = [pytest.mark.integration, pytest.mark.redis]
 

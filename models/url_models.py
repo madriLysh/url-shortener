@@ -1,8 +1,18 @@
 import secrets
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from infrastructure.database import Base
@@ -26,10 +36,10 @@ class URL(Base):
         nullable=False,
         default=lambda: secrets.token_urlsafe(16))
 
-    clicks: Mapped[List["Click"]] = relationship(
+    clicks: Mapped[list["Click"]] = relationship(
         back_populates="url", cascade="all, delete"
     )
-    referrer_stats: Mapped[List["ReferrerState"]] = relationship(
+    referrer_stats: Mapped[list["ReferrerState"]] = relationship(
         back_populates="url", cascade="all, delete"
     )
 

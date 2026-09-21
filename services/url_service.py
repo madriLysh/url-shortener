@@ -1,7 +1,8 @@
 import ipaddress
 import time
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Sequence, Union, cast
+from typing import Optional, Union, cast
 from urllib.parse import urlparse, urlunparse
 
 import tldextract
@@ -112,7 +113,7 @@ class URLService:
             return None
 
         if self._is_url_expired(url.expires_at):
-            setattr(url, 'is_active', False)
+            url.is_active = False
             self.db.commit()
             return None
 
@@ -259,7 +260,7 @@ class URLService:
         if not url:
             raise ValueError(f"URL '{short_code}' not found or already deleted.")
 
-        setattr(url, 'is_active', False)
+        url.is_active = False
 
         pipe = self.redis.client.pipeline()
         pipe.delete(self._key(short_code))
@@ -288,7 +289,7 @@ class URLService:
         if self._code_exist(short_code):
             raise ValueError(f"Code '{short_code}' now used by another URL. Cannot restore.")
 
-        setattr(url, 'is_active', True)
+        url.is_active = True
         self.db.commit()
 
         data = self._build_url_data_dict(url)
@@ -796,7 +797,7 @@ class URLService:
             return None
 
         if self._is_url_expired(url.expires_at):
-            setattr(url, 'is_active', False)
+            url.is_active = False
             self.db.commit()
             return None
 

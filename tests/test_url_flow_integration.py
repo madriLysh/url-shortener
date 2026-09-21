@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta, timezone
+from os import environ
+from typing import Optional
+
 import pytest
 from fastapi import status
-from os import environ
-from datetime import datetime, timezone, timedelta
 
 pytestmark = [pytest.mark.integration, pytest.mark.redis]
 ADMIN_HEADERS = {"X-API-Key": environ["ADMIN_API_KEY"]}
@@ -11,7 +13,7 @@ def create_short_url(integration_client) -> dict:
     assert response.status_code == status.HTTP_201_CREATED
     return response.json()
 
-def follow_redirect(integration_client, data: dict, times: int = 1, expected_url: str | None = None) -> None:
+def follow_redirect(integration_client, data: dict, times: int = 1, expected_url: Optional[str] = None) -> None:
     for _ in range(times):
         response = integration_client.get(f"/{data['short_code']}", follow_redirects=False)
         assert response.status_code == status.HTTP_302_FOUND

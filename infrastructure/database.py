@@ -1,7 +1,9 @@
+from collections.abc import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker, declarative_base
 from sqlalchemy.exc import SQLAlchemyError
-from typing import Generator
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
 from config import Config
 
 engine = create_engine(

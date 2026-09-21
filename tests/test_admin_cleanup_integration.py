@@ -1,13 +1,15 @@
+from datetime import datetime, timedelta, timezone
+from os import environ
+from typing import Optional
+
 import pytest
 from fastapi import status
-from os import environ
-from datetime import datetime, timezone, timedelta
 
 pytestmark = [pytest.mark.integration, pytest.mark.redis]
 ADMIN_HEADERS = {"X-API-Key": environ["ADMIN_API_KEY"]}
 
 
-def create_short_url(integration_client, long_url: str, expires_at: str | None = None) -> dict:
+def create_short_url(integration_client, long_url: str, expires_at: Optional[str] = None) -> dict:
     payload = {"long_url": long_url}
     if expires_at is not None:
         payload["expires_at"] = expires_at

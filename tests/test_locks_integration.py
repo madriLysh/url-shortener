@@ -1,5 +1,6 @@
-import pytest
 from time import sleep
+
+import pytest
 
 from infrastructure.redis_client import RedisClient
 

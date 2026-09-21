@@ -1,11 +1,10 @@
-from datetime import datetime, timezone, timedelta
-import pytest
+from datetime import datetime, timedelta, timezone
 
-from config import Config
-from models import Click, URL
+import pytest
 from conftest import FakeRedis
 
-
+from config import Config
+from models import URL, Click
 
 
 @pytest.mark.parametrize("url, allowed", [
