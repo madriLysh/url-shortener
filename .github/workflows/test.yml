@@ -11,7 +11,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  ruff_checking: 
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: run ruff
+        uses: ./.github/actions/python-env
+        with:
+          install: pip install ruff
+          command: ruff check .
+
   test:
+    needs: ruff_checking
     runs-on: ubuntu-24.04
     services:
       redis:
@@ -37,18 +50,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+      - name: run app
+        uses: ./.github/actions/python-env
+        with: 
+          install: pip install -r requirements-dev.txt
+          command: pytest
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
-
-      - name: Install dependencies
-        run: pip install -r requirements-dev.txt
-
-      - name: Run tests
-        run: pytest
 
