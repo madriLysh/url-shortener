@@ -10,7 +10,7 @@ from main import build_application
 class FakeWorkingDB:
     def execute(self, query): return None
 class FakeDeadDB:
-    def execute(self, query): raise Exception("connection refused")
+    def execute(self, query): raise ConnectionError("connection refused")
 
 class FakePingOk:
     def ping(self): return True
@@ -19,7 +19,7 @@ class FakeWorkingRedis:
         self.client = FakePingOk()
 
 class FakePingDead:
-    def ping(self) : raise Exception("connection refused")
+    def ping(self) : raise ConnectionError("connection refused")
 class FakeDeadRedis:
     def __init__(self) -> None:
         self.client = FakePingDead()

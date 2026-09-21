@@ -363,8 +363,8 @@ def test_create_url_collision_exhaustion_raises_runtime_error(service, monkeypat
     (None, False),
     (datetime(2000, 1, 1, tzinfo=timezone.utc), True),
     (datetime(2099, 1, 1, tzinfo=timezone.utc), False),
-    (datetime(2000, 1, 1), True),
-    (datetime(2099, 1, 1), False)
+    (datetime(2000, 1, 1), True),  # noqa: DTZ001 - intentionally naive: tests the naive-datetime branch of _is_url_expired
+    (datetime(2099, 1, 1), False)  # noqa: DTZ001 - intentionally naive: tests the naive-datetime branch of _is_url_expired
 ))
 def test_is_url_expired(service, exp_date, expected):
     assert expected is service._is_url_expired(exp_date)

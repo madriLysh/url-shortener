@@ -66,7 +66,7 @@ class RedisClient:
         try:
             method = getattr(self.client, operation)
             return method(*args, **kwargs)
-        except RedisError as e:
+        except RedisError:
             logger.exception(f"Redis error during '{operation}'")
             return None
 
@@ -92,7 +92,7 @@ class RedisClient:
                 pipe.expire(key, ttl)
             pipe.execute()
             return True
-        except RedisError as e:
+        except RedisError:
             logger.exception(f"Failed to set hash for key '{key}'")
             return False
 
@@ -114,14 +114,14 @@ class RedisClient:
             if keys:
                 self.client.unlink(*keys)
             return True
-        except RedisError as e:
+        except RedisError:
             logger.exception(f"Failed to delete pattern '{pattern}'")
             return False
 
     def scan_pattern(self, pattern: str) -> list[str]:
         try:
             return list(self.client.scan_iter(pattern))
-        except RedisError as e:
+        except RedisError:
             logger.exception(f"Failed to scan pattern '{pattern}'")
             return []
 
@@ -210,7 +210,7 @@ class RedisClient:
             allowed = bool(result[0])
             count = int(result[1])
             return allowed, count
-        except RedisError as e:
+        except RedisError:
             logger.exception(f"Rate limit check failed for key '{key}'")
             return True, 0
 
@@ -240,7 +240,7 @@ class RedisClient:
                 limit,
             )
             return True
-        except RedisError as e:
+        except RedisError:
             logger.exception(f"Failed to add and trim sorted set '{key}'")
             return False
 

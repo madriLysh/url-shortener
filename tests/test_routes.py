@@ -73,7 +73,7 @@ def test_update_url_valid_token_returns_200_and_updates(client: TestClient, serv
     assert row.long_url == "https://new.com/"
 
 def test_update_url_invalid_token_returns_404(client: TestClient, service: URLService, db_session):
-    code, token = service.create_url("https://old.com", creator_ip="1.2.3.4")
+    code, _ = service.create_url("https://old.com", creator_ip="1.2.3.4")
 
     response = client.patch(f"/urls/{code}", json={"new_url": "https://new.com", "edit_token": "wrong_token"})
     assert response.status_code == status.HTTP_404_NOT_FOUND

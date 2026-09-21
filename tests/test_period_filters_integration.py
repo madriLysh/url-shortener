@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime, timezone
 
 import pytest
 from fastapi import status
@@ -29,7 +29,7 @@ def test_analytics_periods_include_todays_clicks(integration_client, period):
     assert response.status_code == status.HTTP_200_OK
 
     body = response.json()
-    assert body["clicks_per_day"] == [{"date": str(date.today()), "count": 3}]
+    assert body["clicks_per_day"] == [{"date": str(datetime.now(timezone.utc).date()), "count": 3}]
 
 
 @pytest.mark.parametrize("period", PERIODS)
@@ -70,7 +70,7 @@ def test_analytics_invalid_period_treated_as_no_filter(integration_client):
     assert response.status_code == status.HTTP_200_OK
 
     body = response.json()
-    assert body["clicks_per_day"] == [{"date": str(date.today()), "count": 3}]
+    assert body["clicks_per_day"] == [{"date": str(datetime.now(timezone.utc).date()), "count": 3}]
 
 
 def test_history_invalid_period_treated_as_no_filter(integration_client):

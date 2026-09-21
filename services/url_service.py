@@ -269,8 +269,8 @@ class URLService:
 
         try:
             pipe.execute()
-        except Exception as e:
-            logger.error(f"Failed to delete URL '{short_code}' from Redis: {e}", exc_info=True)
+        except Exception:
+            logger.exception(f"Failed to delete URL '{short_code}' from Redis")
         self.db.commit()
 
         return True
@@ -406,8 +406,8 @@ class URLService:
         self.db.add(click)
         try:
             self.db.commit()
-        except Exception as e:
-            logger.error("Failed to record click in DB: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Failed to record click in DB")
             self.db.rollback()
             return
 
@@ -444,20 +444,18 @@ class URLService:
                 new_referrer = ReferrerState(url_id=url_id, referrer_domain=referrer_domain)
                 self.db.add(new_referrer)
             self.db.commit()
-        except Exception as e:
-            logger.error("Failed to update referrer in DB: %s", e, exc_info=True)
+        except Exception:
+            logger.exception("Failed to update referrer in DB")
             self.db.rollback()
 
         try:
             self.redis.zincrby(f"referrers:{url_id}", referrer_domain, 1)
             self.redis.expire_nx(f"referrers:{url_id}", Config.CACHE_TTL)
-        except Exception as e:
-            logger.error(
-                "Failed to update referrer stats in Redis for URL %d, domain %s: %s",
+        except Exception:
+            logger.exception(
+                "Failed to update referrer stats in Redis for URL %d, domain %s",
                 url_id,
                 referrer_domain,
-                e,
-                exc_info=True,
             )
 
     def _normalize_referrer(self, raw_url: str) -> Optional[str]:
@@ -594,8 +592,8 @@ class URLService:
             pipe.delete(f"referrers:{url_id}")
         try:
             pipe.execute()
-        except Exception as e:
-            logger.error(f"Failed to clean up expired URLs from Redis: {e}", exc_info=True)
+        except Exception:
+            logger.exception("Failed to clean up expired URLs from Redis")
 
         return len(expired_urls)
 
