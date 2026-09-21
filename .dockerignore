@@ -1,9 +1,45 @@
-.git/              # version history — not needed to run, just bloat
-venv/              # your LOCAL virtualenv — see the trap below
-__pycache__/       # compiled bytecode, regenerated automatically
-*.pyc              # same, catches stray files at any level
-.env               # SECRETS — the whole point of this file
-.dockerignore      # itself — meta, but standard
-Dockerfile         # not needed inside the image
-tests/             # optional — decide below
-*.md               # optional — README etc., harmless either way
+.git
+.gitignore
+.gitattributes
+.github
+
+dockerfile
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+docker-compose*.yaml
+
+.env
+.env.*
+!.env.example
+
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+build
+dist
+
+venv
+.venv
+env
+ENV
+
+.vscode
+.idea
+**/*.swp
+
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+*.md
+LICENSE*
+fix.txt
+
+tests
+pytest.ini
