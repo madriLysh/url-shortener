@@ -14,7 +14,7 @@ class RedisConnectionPool:
     _instance: Optional['RedisConnectionPool'] = None
     _pool: Optional[ConnectionPool] = None
 
-    def __new__(cls) -> 'RedisConnectionPool':
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
@@ -67,7 +67,7 @@ class RedisClient:
             method = getattr(self.client, operation)
             return method(*args, **kwargs)
         except RedisError as e:
-            logger.error(f"Redis error during '{operation}': {e}", exc_info=True)
+            logger.exception(f"Redis error during '{operation}'")
             return None
 
     # ========== Basic Operations ==========
@@ -93,7 +93,7 @@ class RedisClient:
             pipe.execute()
             return True
         except RedisError as e:
-            logger.error(f"Failed to set hash for key '{key}': {e}", exc_info=True)
+            logger.exception(f"Failed to set hash for key '{key}'")
             return False
 
     def get_hash(self, key: str) -> Optional[dict[str, str]]:
@@ -115,14 +115,14 @@ class RedisClient:
                 self.client.unlink(*keys)
             return True
         except RedisError as e:
-            logger.error(f"Failed to delete pattern '{pattern}': {e}", exc_info=True)
+            logger.exception(f"Failed to delete pattern '{pattern}'")
             return False
 
     def scan_pattern(self, pattern: str) -> list[str]:
         try:
             return list(self.client.scan_iter(pattern))
         except RedisError as e:
-            logger.error(f"Failed to scan pattern '{pattern}': {e}", exc_info=True)
+            logger.exception(f"Failed to scan pattern '{pattern}'")
             return []
 
     # ========== Distributed Locks ==========#
@@ -211,7 +211,7 @@ class RedisClient:
             count = int(result[1])
             return allowed, count
         except RedisError as e:
-            logger.error(f"Rate limit check failed for key '{key}': {e}", exc_info=True)
+            logger.exception(f"Rate limit check failed for key '{key}'")
             return True, 0
 
     # ========== Sorted Set Operations ==========
@@ -241,7 +241,7 @@ class RedisClient:
             )
             return True
         except RedisError as e:
-            logger.error(f"Failed to add and trim sorted set '{key}': {e}", exc_info=True)
+            logger.exception(f"Failed to add and trim sorted set '{key}'")
             return False
 
     def zrevrange(
