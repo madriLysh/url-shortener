@@ -54,6 +54,18 @@ jobs:
         uses: ./.github/actions/python-env
         with: 
           install: pip install -r requirements-dev.txt
-          command: pytest
+          command: pytest --junit-xml=reports/pytest.xml
           cache: pip
+        
+      - name: failing tests
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with: 
+          name: pytest-report
+          path: reports/pytest.xml
+          if-no-file-found: error
+          overwrite: true
+
+          
+          
 
