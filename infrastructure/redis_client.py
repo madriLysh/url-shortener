@@ -1,9 +1,8 @@
 from time import sleep, time
-from typing import Optional, cast
+from typing import Optional, Self, cast
 
 from redis import ConnectionError as RedisConnectionError
 from redis import ConnectionPool, Redis, RedisError
-from typing_extensions import Self
 
 from config import Config
 from log import get_logger
@@ -12,7 +11,7 @@ logger = get_logger(__name__)
 
 class RedisConnectionPool:
     _instance: Optional['RedisConnectionPool'] = None
-    _pool: Optional[ConnectionPool] = None
+    _pool: ConnectionPool | None = None
 
     def __new__(cls) -> Self:
         if cls._instance is None:
@@ -33,7 +32,7 @@ class RedisConnectionPool:
             socket_keepalive=True
         )
 
-    def get_connection(self) -> Optional[Redis]:
+    def get_connection(self) -> Redis | None:
         if self._pool is None:
             self._pool = self._create_pool()
 
@@ -72,11 +71,11 @@ class RedisClient:
 
     # ========== Basic Operations ==========
 
-    def get(self, key: str) -> Optional[str]:
+    def get(self, key: str) -> str | None:
         result = self._execute("get", key)
         return str(result) if result is not None else None
 
-    def set(self, key: str, value: str, ttl: Optional[int] = None) -> bool:
+    def set(self, key: str, value: str, ttl: int | None = None) -> bool:
         return self._execute("set", key, value, ex=ttl) is not None
 
     def delete(self, key: str) -> bool:
@@ -84,7 +83,7 @@ class RedisClient:
 
     # ========== Hash Operations ==========
 
-    def set_hash(self, key: str, data: dict[str, str], ttl: Optional[int] = None) -> bool:
+    def set_hash(self, key: str, data: dict[str, str], ttl: int | None = None) -> bool:
         try:
             pipe = self.client.pipeline()
             pipe.hset(key, mapping=cast(dict, data))
@@ -96,7 +95,7 @@ class RedisClient:
             logger.exception(f"Failed to set hash for key '{key}'")
             return False
 
-    def get_hash(self, key: str) -> Optional[dict[str, str]]:
+    def get_hash(self, key: str) -> dict[str, str] | None:
         result = self._execute("hgetall", key)
         return result if result else None
 
@@ -146,7 +145,7 @@ class RedisClient:
         lock_name: str,
         acquire_timeout: int = 10,
         lock_timeout: int = 10
-    ) -> Optional[str]:
+    ) -> str | None:
         from uuid import uuid4
 
         lock_key = self._lock_key(lock_name)
@@ -249,7 +248,7 @@ class RedisClient:
         start: int = 0,
         end: int = 9,
         scores: bool = False
-    ) -> Optional[list]:
+    ) -> list | None:
         result = self._execute("zrevrange", key, start, end, withscores=scores)
         return result if result else None
 

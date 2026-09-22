@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi import status
@@ -39,7 +39,7 @@ def test_analytics_clicks_per_day(integration_client):
     days = response.json()["clicks_per_day"]
     assert len(days) == 1
     assert days[0]["count"] == 3
-    assert days[0]["date"] == str(datetime.now(timezone.utc).date())
+    assert days[0]["date"] == str(datetime.now(UTC).date())
 
 
 def test_analytics_empty_period(integration_client):

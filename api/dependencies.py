@@ -1,5 +1,4 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from fastapi import Depends, Header, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
@@ -26,7 +25,7 @@ def get_url_service(
     return URLService(redis, db)
 
 def verify_api_key(
-    x_api_key: Optional[str] = Header(default=None)
+    x_api_key: str | None = Header(default=None)
 ) -> None:
     if not Config.ADMIN_API_KEY:
         raise HTTPException(
@@ -66,7 +65,7 @@ def rate_limit_for(endpoint: str, limit_type: str):
         )
     return check
 
-def since_calculation(period: Optional[str] = Query(None, description="1d, 1w, 1m, 3m, 1y")):
+def since_calculation(period: str | None = Query(None, description="1d, 1w, 1m, 3m, 1y")):
     periods = {
         "1d": timedelta(days=1),
         "1w": timedelta(weeks=1),
@@ -74,7 +73,7 @@ def since_calculation(period: Optional[str] = Query(None, description="1d, 1w, 1
         "3m": timedelta(days=90),
         "1y": timedelta(days=365),
     }
-    return datetime.now(timezone.utc) - periods[period] if period in periods else None
+    return datetime.now(UTC) - periods[period] if period in periods else None
 
 def check_rate_limit_read(redis: RedisClient, endpoint: str, client_ip: str):
     rate_limit_for(endpoint, "read")(redis, client_ip)

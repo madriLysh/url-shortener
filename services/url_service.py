@@ -1,8 +1,8 @@
 import ipaddress
 import time
 from collections.abc import Sequence
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Union, cast
+from datetime import UTC, datetime, timedelta
+from typing import cast
 from urllib.parse import urlparse, urlunparse
 
 import tldextract
@@ -35,20 +35,20 @@ class URLService:
     def _key(self, short_code: str) -> str:
         return f'{self.PREFIX}{short_code}'
 
-    def _is_url_expired(self, expires_at: Optional[datetime]) -> bool:
+    def _is_url_expired(self, expires_at: datetime | None) -> bool:
         if expires_at is None:
             return False
 
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            expires_at = expires_at.replace(tzinfo=UTC)
 
-        return datetime.now(timezone.utc) > expires_at
+        return datetime.now(UTC) > expires_at
 
     def _build_url_data_dict(
         self,
         url_obj: URL,
-        short_code: Optional[str] = None,
-        click_count: Optional[int] = None
+        short_code: str | None = None,
+        click_count: int | None = None
     ) -> dict[str, str]:
 
         click_value = (
@@ -69,7 +69,7 @@ class URLService:
             "is_active": "True"
         }
 
-    def _invalidate_if_deleted(self, cached: Optional[dict], key: str) -> Optional[dict]:
+    def _invalidate_if_deleted(self, cached: dict | None, key: str) -> dict | None:
         if not cached:
             return None
 
@@ -86,7 +86,7 @@ class URLService:
         ).scalar()
         return bool(result)
 
-    def get_url(self, short_code: str) -> Optional[dict[str, str]]:
+    def get_url(self, short_code: str) -> dict[str, str] | None:
         key = self._key(short_code)
         result = self.redis.get_hash(key)
 
@@ -133,7 +133,7 @@ class URLService:
             and Config.MIN_CUSTOM_CODE_LENGTH <= len(code) <= Config.MAX_CUSTOM_CODE_LENGTH
         )
 
-    def _code_exist(self, code: str, is_active: Optional[bool] = True) -> bool:
+    def _code_exist(self, code: str, is_active: bool | None = True) -> bool:
         cached = self.redis.get_hash(self._key(code))
         if cached:
             cached_is_active = cached.get("is_active", "True") == "True"
@@ -148,8 +148,8 @@ class URLService:
         self,
         long_url: str,
         creator_ip: str,
-        expires_at: Optional[datetime] = None,
-        custom_code: Optional[str] = None,
+        expires_at: datetime | None = None,
+        custom_code: str | None = None,
     ) -> tuple[str, str]:
         if not self._is_valid_long_url(long_url):
             raise ValueError(f"URL '{long_url}' is not allowed.")
@@ -324,8 +324,8 @@ class URLService:
 
     def _format_referrers(
         self,
-        raw: Sequence[Union[tuple, ReferrerState]]
-    ) -> list[dict[str, Union[str, int]]]:
+        raw: Sequence[tuple | ReferrerState]
+    ) -> list[dict[str, str | int]]:
 
         if not raw:
             return []
@@ -344,7 +344,7 @@ class URLService:
 
         return formatted
 
-    def get_url_stats(self, short_code: str) -> Optional[dict]:
+    def get_url_stats(self, short_code: str) -> dict | None:
 
         url = self.db.query(URL).filter(
             URL.short_code == short_code,
@@ -359,7 +359,7 @@ class URLService:
         pipe.zrevrange(f"referrers:{url.id}", 0, Config.TOP_REFERRERS_LIMIT - 1, withscores=True)
         pipe.pfcount(f"unique_visitors:{short_code}")
 
-        cached: Optional[dict] = None
+        cached: dict | None = None
         top_url = None
 
         try:
@@ -392,9 +392,9 @@ class URLService:
     def record_click(
         self,
         url_id: str,
-        ip_address: Optional[str],
-        user_agent: Optional[str],
-        referrer: Optional[str],
+        ip_address: str | None,
+        user_agent: str | None,
+        referrer: str | None,
     ) -> None:
 
         click = Click(
@@ -418,7 +418,7 @@ class URLService:
     def _upsert_referrer(
         self,
         url_id: int,
-        referrer: Optional[str],
+        referrer: str | None,
     ) -> None:
 
         if not referrer:
@@ -439,7 +439,7 @@ class URLService:
             )
             if existing:
                 existing.click_count += 1
-                existing.last_clicked = datetime.now(timezone.utc)
+                existing.last_clicked = datetime.now(UTC)
             else:
                 new_referrer = ReferrerState(url_id=url_id, referrer_domain=referrer_domain)
                 self.db.add(new_referrer)
@@ -458,7 +458,7 @@ class URLService:
                 referrer_domain,
             )
 
-    def _normalize_referrer(self, raw_url: str) -> Optional[str]:
+    def _normalize_referrer(self, raw_url: str) -> str | None:
         if not raw_url:
             return None
 
@@ -477,7 +477,7 @@ class URLService:
 
         logger.info("Starting click sync to DB")
 
-        def _sync_batch(keys: list[str]) -> Optional[int]:
+        def _sync_batch(keys: list[str]) -> int | None:
             """Returns count of updated URLs, or None if the batch failed."""
             if not keys:
                 return 0
@@ -569,7 +569,7 @@ class URLService:
 
     def deactivate_expired_urls(self) -> int:
         expired_urls = self.db.query(URL).filter(
-            URL.expires_at < datetime.now(timezone.utc),
+            URL.expires_at < datetime.now(UTC),
             URL.is_active == True).limit(Config.EXPIRED_URLS_BATCH_SIZE).all()
 
         if not expired_urls:
@@ -600,10 +600,10 @@ class URLService:
     def get_url_history(
         self,
         short_code: str,
-        since: Optional[datetime] = None,
+        since: datetime | None = None,
         offset: int = 0,
         limit: int = 20
-    ) -> Optional[dict]:
+    ) -> dict | None:
 
         url = self.db.query(URL).filter(
             URL.short_code == short_code,
@@ -644,7 +644,7 @@ class URLService:
 
         expires_at = url.expires_at
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            expires_at = expires_at.replace(tzinfo=UTC)
 
         new_expires_at = expires_at + timedelta(seconds=Config.CACHE_TTL)
         url.expires_at = new_expires_at
@@ -654,10 +654,10 @@ class URLService:
             self._key(short_code),
             "expires_at",
             new_expires_at.isoformat())
-        remaining = new_expires_at - datetime.now(timezone.utc)
+        remaining = new_expires_at - datetime.now(UTC)
         return int(remaining.total_seconds())
 
-    def _parse_browser(self, user_agent: Optional[str]) -> str:
+    def _parse_browser(self, user_agent: str | None) -> str:
         if not user_agent:
             return "Unknown"
         try:
@@ -666,7 +666,7 @@ class URLService:
         except Exception:
             return "Unknown"
 
-    def _clicks_per_day(self, url: URL, since: Optional[datetime] = None):
+    def _clicks_per_day(self, url: URL, since: datetime | None = None):
         query = self.db.query(
             func.date(Click.clicked_at).label("date"),
             func.count().label("count")
@@ -679,7 +679,7 @@ class URLService:
             func.date(Click.clicked_at).desc()
         ).all()
 
-    def _top_countries(self, url: URL, since: Optional[datetime] = None):
+    def _top_countries(self, url: URL, since: datetime | None = None):
         query = self.db.query(
             Click.country_code,
             func.count().label("count")
@@ -692,7 +692,7 @@ class URLService:
             func.count().desc()
         ).all()
 
-    def _top_browsers(self, url: URL, since: Optional[datetime] = None):
+    def _top_browsers(self, url: URL, since: datetime | None = None):
         query = self.db.query(
             Click.user_agent,
             func.count().label("count")
@@ -705,7 +705,7 @@ class URLService:
             func.count().desc()
         ).all()
 
-    def get_url_analytics(self, short_code: str, since: Optional[datetime] = None):
+    def get_url_analytics(self, short_code: str, since: datetime | None = None):
 
         url = self.db.query(URL).filter(
             URL.short_code == short_code,
@@ -732,7 +732,7 @@ class URLService:
 
     def get_top_urls(
         self,
-        since: Optional[datetime] = None,
+        since: datetime | None = None,
         offset: int = 0,
         limit: int = 10
     ) -> list[dict]:
@@ -783,7 +783,7 @@ class URLService:
                 for row in results
             ]
 
-    def search_by_long_url(self, long_url: str) -> Optional[dict]:
+    def search_by_long_url(self, long_url: str) -> dict | None:
         normalized = self._normalize_long_url(long_url)
 
         url = (

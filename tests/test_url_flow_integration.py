@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from os import environ
-from typing import Optional
 
 import pytest
 from fastapi import status
@@ -13,7 +12,7 @@ def create_short_url(integration_client) -> dict:
     assert response.status_code == status.HTTP_201_CREATED
     return response.json()
 
-def follow_redirect(integration_client, data: dict, times: int = 1, expected_url: Optional[str] = None) -> None:
+def follow_redirect(integration_client, data: dict, times: int = 1, expected_url: str | None = None) -> None:
     for _ in range(times):
         response = integration_client.get(f"/{data['short_code']}", follow_redirects=False)
         assert response.status_code == status.HTTP_302_FOUND
@@ -70,7 +69,7 @@ def test_restore_deleted_url(integration_client):
     follow_redirect(integration_client, data)
 
 def test_expired_url_returns_410(integration_client):
-    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    past = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     response = integration_client.post(
         "/shorten",
         json={"long_url": "https://example.com/expired-page", "expires_at": past},

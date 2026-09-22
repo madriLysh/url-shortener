@@ -1,6 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from os import environ
-from typing import Optional
 
 import pytest
 from fastapi import status
@@ -9,7 +8,7 @@ pytestmark = [pytest.mark.integration, pytest.mark.redis]
 ADMIN_HEADERS = {"X-API-Key": environ["ADMIN_API_KEY"]}
 
 
-def create_short_url(integration_client, long_url: str, expires_at: Optional[str] = None) -> dict:
+def create_short_url(integration_client, long_url: str, expires_at: str | None = None) -> dict:
     payload = {"long_url": long_url}
     if expires_at is not None:
         payload["expires_at"] = expires_at
@@ -19,7 +18,7 @@ def create_short_url(integration_client, long_url: str, expires_at: Optional[str
 
 
 def test_cleanup_deactivates_only_expired_urls(integration_client):
-    past = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    past = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     expired = create_short_url(integration_client, "https://example.com/expired-page", expires_at=past)
     active = create_short_url(integration_client, "https://example.com/active-page")
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from conftest import FakeRedis
@@ -59,12 +59,12 @@ def test_create_url_rejects_deleted_code_when_reuse_disabled(service, monkeypatc
         )
 
 def test_extend_url_expiry(service):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     short_code, edit_token = service.create_url(
         "https://example.com",
         creator_ip="1.2.3.4",
-        expires_at=datetime.now(timezone.utc) + timedelta(seconds=60),
+        expires_at=datetime.now(UTC) + timedelta(seconds=60),
     )
 
     remaining = service.extend_url_expiry(short_code, edit_token)
@@ -160,7 +160,7 @@ def test_get_url_cache_miss_db_hit_backfills(service, db_session):
     assert result["long_url"] == "https://example.com/page"
 
 def test_get_url_cache_miss_expired_db_row_deactivates(service, db_session):
-    expires_at = datetime(2000,1,1,tzinfo=timezone.utc)
+    expires_at = datetime(2000,1,1,tzinfo=UTC)
     db_session.add(URL(
         id=1,
         short_code="dbexp1",
@@ -327,7 +327,7 @@ def test_extend_url_expiry_invalid_token_raises(service):
     short_code, _ = service.create_url(
         "https://example.com",
         creator_ip="1.2.3.4",
-        expires_at=datetime.now(timezone.utc) + timedelta(seconds=60),
+        expires_at=datetime.now(UTC) + timedelta(seconds=60),
     )
     with pytest.raises(ValueError, match="Invalid edit token"):
         service.extend_url_expiry(short_code, "wrong-token")
@@ -361,8 +361,8 @@ def test_create_url_collision_exhaustion_raises_runtime_error(service, monkeypat
 
 @pytest.mark.parametrize("exp_date, expected", (
     (None, False),
-    (datetime(2000, 1, 1, tzinfo=timezone.utc), True),
-    (datetime(2099, 1, 1, tzinfo=timezone.utc), False),
+    (datetime(2000, 1, 1, tzinfo=UTC), True),
+    (datetime(2099, 1, 1, tzinfo=UTC), False),
     (datetime(2000, 1, 1), True),  # noqa: DTZ001 - intentionally naive: tests the naive-datetime branch of _is_url_expired
     (datetime(2099, 1, 1), False)  # noqa: DTZ001 - intentionally naive: tests the naive-datetime branch of _is_url_expired
 ))

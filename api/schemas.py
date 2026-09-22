@@ -1,13 +1,12 @@
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, HttpUrl
 
 
 class URLCreate(BaseModel):
     long_url: HttpUrl
-    custom_alias: Optional[str] = None
-    expires_at: Optional[datetime] = None
+    custom_alias: str | None = None
+    expires_at: datetime | None = None
 
 class URLUpdate(BaseModel):
     new_url: HttpUrl
@@ -25,22 +24,22 @@ class ReferrerStat(BaseModel):
 
 class URLStats(BaseModel):
     click_count: int
-    created_at: Optional[datetime] = None
-    expires_at: Optional[datetime] = None
-    top_referrers: Optional[list[ReferrerStat]] = None
+    created_at: datetime | None = None
+    expires_at: datetime | None = None
+    top_referrers: list[ReferrerStat] | None = None
     unique_visitors: int = 0
     source: str
 
 class ErrorResponse(BaseModel):
     detail: str
-    short_url: Optional[str] = None
-    long_url: Optional[str] = None
+    short_url: str | None = None
+    long_url: str | None = None
 
 class URLClickHistory(BaseModel):
-    clicked_at: datetime = datetime.now(timezone.utc)
-    user_agent: Optional[str] = None
-    referrer: Optional[str] = None
-    country_code: Optional[str] = None
+    clicked_at: datetime = datetime.now(UTC)
+    user_agent: str | None = None
+    referrer: str | None = None
+    country_code: str | None = None
 
 class URLClickHistoryResponse(BaseModel):
     short_code: str
@@ -60,7 +59,7 @@ class ClickPerDay(BaseModel):
     count: int
 
 class CountryStat(BaseModel):
-    country_code: Optional[str]
+    country_code: str | None
     count: int
 
 class BrowserStat(BaseModel):

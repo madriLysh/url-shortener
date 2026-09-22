@@ -1,6 +1,5 @@
 import secrets
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import (
     BigInteger,
@@ -24,10 +23,10 @@ class URL(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True, autoincrement=True)
     short_code: Mapped[str] = mapped_column(String(10), nullable=False)
     long_url: Mapped[str] = mapped_column(Text, nullable=False)
-    creator_ip: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
+    creator_ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
     is_custom: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
-    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     click_count: Mapped[int] = mapped_column(default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     edit_token: Mapped[str] = mapped_column(
@@ -69,10 +68,10 @@ class Click(Base):
     )
     url_id: Mapped[int] = mapped_column(ForeignKey("urls.id", ondelete="CASCADE"), nullable=False)
     clicked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
-    ip_address: Mapped[Optional[str]] = mapped_column(String(45), nullable=True)
-    user_agent: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    referrer: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    country_code: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    referrer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    country_code: Mapped[str | None] = mapped_column(String(2), nullable=True)
 
     url: Mapped["URL"] = relationship(back_populates="clicks")
 

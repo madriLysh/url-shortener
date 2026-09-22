@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -55,7 +55,7 @@ def test_redirect_expired_url_returns_410(client: TestClient, service: URLServic
         short_code="url1",
         long_url="https://example.com",
         is_active=True,
-        expires_at=datetime(2000, 1, 1, tzinfo=timezone.utc)
+        expires_at=datetime(2000, 1, 1, tzinfo=UTC)
     ))
     db_session.commit()
 
@@ -151,7 +151,7 @@ def test_admin_cleanup_returns_deleted_count(client: TestClient, db_session, mon
         short_code="old123", 
         long_url="https://example.com",  
         is_active=True,
-        expires_at =datetime.now(timezone.utc) - timedelta(hours=1),
+        expires_at =datetime.now(UTC) - timedelta(hours=1),
         edit_token ="tok1"
     ))
 
@@ -159,7 +159,7 @@ def test_admin_cleanup_returns_deleted_count(client: TestClient, db_session, mon
         short_code="fresh1", 
         long_url="https://example.com",  
         is_active=True,
-        expires_at = datetime.now(timezone.utc) + timedelta(days=1),
+        expires_at = datetime.now(UTC) + timedelta(days=1),
         edit_token ="tok2"
     ))
     db_session.commit()

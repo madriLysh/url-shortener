@@ -1,4 +1,3 @@
-from typing import Optional
 
 from fastapi import (
     APIRouter,
@@ -167,7 +166,7 @@ def update_url(
 @router.get("/urls/{short_code}/history", response_model=URLClickHistoryResponse)
 def get_click_history(
     short_code: str,
-    period: Optional[str] = Query(None, description="1d, 1w, 1m, 3m, 1y"),
+    period: str | None = Query(None, description="1d, 1w, 1m, 3m, 1y"),
     page : int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size : int = Query(Config.DEFAULT_PAGE_SIZE,
                             ge=1,
@@ -201,7 +200,7 @@ def get_click_history(
 @router.get("/urls/top", response_model=TopURLsResponse)
 def get_top_urls(
     limit: int = Query(10, ge=1, le=100),
-    period: Optional[str] = Query(None, description="1d, 1w, 1m, 3m, 1y"),
+    period: str | None = Query(None, description="1d, 1w, 1m, 3m, 1y"),
     page : int = Query(1, ge=1, description="Page number (1-indexed)"),
     page_size : int = Query(Config.DEFAULT_PAGE_SIZE,
                             ge=1,
@@ -230,7 +229,7 @@ def get_top_urls(
 @router.get("/urls/{short_code}/analytics", response_model=URLAnalytics)
 def get_url_analytics(
     short_code: str,
-    period: Optional[str] = Query(None, description="1d, 1w, 1m, 3m, 1y"),
+    period: str | None = Query(None, description="1d, 1w, 1m, 3m, 1y"),
     service: URLService = Depends(get_url_service),
     client_ip : str = Depends(get_client_ip)
 ):

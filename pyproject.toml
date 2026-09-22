@@ -1,11 +1,9 @@
 [tool.ruff]
-target-version = "py39" # local venv runs Python 3.9; PEP 604 unions must stay as Optional/Union
-
+target-version = "py312" 
 [tool.ruff.lint]
 ignore = [
     "B008",   # FastAPI dependency injection pattern requires calls in argument defaults
     "BLE001", # intentional catch-all in health checks and startup/shutdown handlers
-    "FA100",  # local venv is Python 3.9; typing.Optional/Union are intentional (no PEP 604 syntax)
 ]
 
 [tool.ruff.lint.per-file-ignores]
